@@ -45,3 +45,52 @@ class FrozenDict(Dict):
         for v in self.values():
             if isinstance(v, FrozenDict):
                 v.freeze(set_freeze)
+
+
+def to_plain_dict(frozen_dict, sep=None):
+    """
+    Converts an FrozenDict object to a `plain_dict`.
+    The term `plain_dict` means that there is no nested dict inside the
+    returned dict.  For nested field in input frozen_dict, the attributes
+    are joined using a separator.  If `sep` is None, then the default
+    separator is `__`.
+    For example, cfg.svm.C=100.0 will be converted to
+    cfg_plain['svm__C'] = 100.0.
+    """
+    assert isinstance(frozen_dict, FrozenDict)
+    if sep is None:
+        sep = '__'
+    out = dict()
+    for k, v in frozen_dict.items():
+        if isinstance(v, FrozenDict):
+            # recursively get the dict and join
+            vdict = to_plain_dict(v, sep=sep)
+            for kk, vv in vdict.items():
+                out.update({sep.join([k, kk]): vv})
+        else:
+            out[k] = v
+
+    return out
+
+
+def from_plain_dict(plain_dict, sep=None):
+    """Converts a converted plain_dict back to FrozenDict.
+    If `sep` is None, then the default separator is `__`.
+    """
+    assert isinstance(plain_dict, dict)
+    assert all([not isinstance(v, dict) for v in plain_dict.values()])
+    if sep is None:
+        sep = '__'
+    frozen_dict = FrozenDict()
+    for k, v in plain_dict.items():
+        all_keys = k.split(sep)
+        current = frozen_dict
+        for ak in all_keys:
+            if ak == all_keys[-1]:  # the last one
+                current[ak] = v
+            else:
+                if not hasattr(current, ak):
+                    current[ak] = FrozenDict()
+                current = current[ak]
+
+    return frozen_dict
