@@ -22,11 +22,6 @@ logger = logging.getLogger(__name__)
 cfg = FrozenDict()  # for importing
 
 
-def reset_cfg():
-    """Clean up and reset the global cfg."""
-    globals()['cfg'] = FrozenDict()
-
-
 def merge_from_yml(file_name, to_cfg=None):
     """Merge from yaml file."""
     with open(file_name, 'rb') as f:
@@ -35,6 +30,14 @@ def merge_from_yml(file_name, to_cfg=None):
         to_cfg = cfg
     assert isinstance(to_cfg, FrozenDict)
     _merge_dict_into_Dict(d, to_cfg)
+
+
+def merge_from_parser_args(args, to_cfg=None):
+    """Merge from args parsed from command line."""
+    if to_cfg is None:
+        to_cfg = cfg
+    assert isinstance(to_cfg, FrozenDict)
+    _merge_namespace_into_Dict(args, to_cfg)
 
 
 def cfg_parser(to_cfg=None):
@@ -52,26 +55,33 @@ def _convert_Dict_to_parser(D, parser, prefix=''):
     """Recursively traverse D and put entries into parser."""
     for k, v in D.items():
         arg_name = '--' + prefix + k
+        help_template = ("Option '{0}' of type '{1}' with "
+                         "default value '{2}'".format(k, type(v).__name__, v))
         if isinstance(v, FrozenDict):
             parser = _convert_Dict_to_parser(v, parser, k + '.')
         elif isinstance(v, six.string_types):
-            parser.add_argument(arg_name, type=str, default=v)
+            parser.add_argument(arg_name, type=str, default=v,
+                                help=help_template)
         elif isinstance(v, np.ndarray):
             # NOTE: only 1d array for numpy parser is supported.
             parser.add_argument(arg_name, action=_StoreAsNumpyArray,
-                                nargs=v.numel(), type=v.dtype, default=v)
+                                nargs=v.size, type=type(v.item(0)), default=v,
+                                help=help_template)
         elif isinstance(v, bool):
             # We don't use store_true/store_false. Always specify True/False.
-            parser.add_argument(arg_name, type=_str2bool, default=v)
+            parser.add_argument(arg_name, type=_str2bool, default=v,
+                                help=help_template)
         elif isinstance(v, numbers.Real):
-            parser.add_argument(arg_name, type=type(v), default=v)
+            parser.add_argument(arg_name, type=type(v), default=v,
+                                help=help_template)
         elif isinstance(v, Iterable):
             # Enforce list/tuple to have same length
             parser.add_argument(arg_name, type=type(v[0]), nargs=len(v),
-                                default=v)
+                                default=v, help=help_template)
         else:
             # For types not covered by above, simply setup as the same type.
-            parser.add_argument(arg_name, type=type(v), default=v)
+            parser.add_argument(arg_name, type=type(v), default=v,
+                                help=help_template)
     return parser
 
 
@@ -113,6 +123,20 @@ def _merge_dict_into_Dict(d, D, stack=None):
         else:
             v = _decode_value(v)
             D[k] = _coerce_value(v, D[k], full_key)
+
+
+def _merge_namespace_into_Dict(args, D, stack=None):
+    """Merge namespace args from ArgumentParser into FrozenDict D."""
+    assert isinstance(D, FrozenDict)
+
+    for k, v in D.items():
+        if isinstance(v, FrozenDict):
+            stack_push = [k] if stack is None else stack + [k]
+            _merge_namespace_into_Dict(args, v, stack_push)
+        else:
+            full_key = '.'.join(stack) + '.' + k if stack is not None else k
+            assert hasattr(args, full_key)
+            D[k] = _coerce_value(getattr(args, full_key), v, full_key)
 
 
 def _decode_value(v):
