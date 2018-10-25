@@ -11,7 +11,6 @@ import argparse
 import copy
 import logging
 import numbers
-import uuid
 from ast import literal_eval
 from collections import Iterable
 import six
@@ -20,41 +19,32 @@ import yaml
 from .frozen_dict import FrozenDict
 
 logger = logging.getLogger(__name__)
-
-CFG_LIST = dict()
-CURRENT = None
+cfg = FrozenDict()  # for importing
 
 
-def create(name=None):
-    """Create a new cfg."""
-    if name is None:
-        name = uuid.uuid4()
-    elif name in CFG_LIST:
-        raise KeyError('The key {} is already used'.format(name))
-    cfg = FrozenDict()
-    CFG_LIST.update({name: cfg})
-    globals()['CURRENT'] = name
-    return cfg
+def reset_cfg():
+    """Clean up and reset the global cfg."""
+    globals()['cfg'] = FrozenDict()
 
 
-def merge_from_yml(file_name, cfg=None):
+def merge_from_yml(file_name, to_cfg=None):
     """Merge from yaml file."""
     with open(file_name, 'rb') as f:
         d = yaml.load(f)
-    if cfg is None:
-        cfg = CFG_LIST[CURRENT]
-    assert isinstance(cfg, FrozenDict)
-    _merge_dict_into_Dict(d, cfg)
+    if to_cfg is None:
+        to_cfg = cfg
+    assert isinstance(to_cfg, FrozenDict)
+    _merge_dict_into_Dict(d, to_cfg)
 
 
-def cfg_parser(cfg=None):
+def cfg_parser(to_cfg=None):
     """Returns a parser with options and default values specified from
     a cfg FrozenDict."""
-    if cfg is None:
-        cfg = CFG_LIST[CURRENT]
-    assert isinstance(cfg, FrozenDict)
+    if to_cfg is None:
+        to_cfg = cfg
+    assert isinstance(to_cfg, FrozenDict)
     parser = argparse.ArgumentParser(description='CFG parser.')
-    parser = _convert_Dict_to_parser(cfg, parser)
+    parser = _convert_Dict_to_parser(to_cfg, parser)
     return parser
 
 
@@ -147,7 +137,7 @@ def _coerce_value(value_a, value_b, full_key):
     # Exceptions
     if isinstance(value_b, np.ndarray):
         value_a = np.asarray(value_a, dtype=value_b.dtype)
-    elif isinstance(value_b, six.string_types):
+    elif isinstance(value_b, six.string_types) and not isinstance(value_a, Iterable):
         value_a = str(value_a)
     elif isinstance(value_b, tuple) and isinstance(value_a, Iterable):
         value_a = tuple(value_a)
