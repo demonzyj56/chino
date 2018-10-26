@@ -95,6 +95,11 @@ def _convert_Dict_to_parser(D, parser, prefix=''):
         elif isinstance(v, numbers.Real):
             parser.add_argument(arg_name, type=type(v), default=v,
                                 help=help_template)
+        elif isinstance(v, list):
+            # NOTE: match list before any other iterables, assuming a list
+            # may be of arbitrary lenth.
+            parser.add_argument(arg_name, type=type(v[0]), nargs='*', default=v,
+                                help=help_template)
         elif isinstance(v, Iterable):
             # Enforce list/tuple to have same length
             parser.add_argument(arg_name, type=type(v[0]), nargs=len(v),

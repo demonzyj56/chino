@@ -53,6 +53,8 @@ class TestCfgParser(unittest.TestCase):
         self.cfg.NAME = 'default'
         self.cfg.RNG_SEED = 9527
         self.cfg.IMG_SIZE = [224, 224, 3]
+        self.cfg.VARY_LEN = list(range(5))
+        self.cfg.TO_BE_EMPTY = list(range(4))
         self.cfg.IMG_MEAN = np.random.rand(3)
         self.cfg.freeze()
 
@@ -61,7 +63,7 @@ class TestCfgParser(unittest.TestCase):
         args = parser.parse_args("""
             --SVM.ENABLED False --SVM.C 1000.
             --SVM.IMPL generic --NAME TestParser --IMG_SIZE 256 256 1
-            --IMG_MEAN 1.2 2.3 3.4
+            --IMG_MEAN 1.2 2.3 3.4 --VARY_LEN 5 6 7 --TO_BE_EMPTY
         """.split())
         cc.merge_from_parser_args(args, self.cfg)
         self.assertFalse(self.cfg.SVM.ENABLED)
@@ -70,6 +72,8 @@ class TestCfgParser(unittest.TestCase):
         self.assertEqual(self.cfg.NAME, 'TestParser')
         self.assertEqual(self.cfg.RNG_SEED, 9527)
         self.assertSequenceEqual(self.cfg.IMG_SIZE, [256, 256, 1])
+        self.assertListEqual(self.cfg.VARY_LEN, [5, 6, 7])
+        self.assertListEqual(self.cfg.TO_BE_EMPTY, [])
         self.assertIsInstance(self.cfg.IMG_MEAN, np.ndarray)
         self.assertTrue(np.allclose(self.cfg.IMG_MEAN,
                                     np.array([1.2, 2.3, 3.4])))
