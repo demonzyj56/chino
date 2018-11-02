@@ -45,7 +45,7 @@ cfg = FrozenDict()  # for importing
 
 def merge_from_yml(file_name, to_cfg=None):
     """Merge from yaml file."""
-    with open(file_name, 'rb') as f:
+    with open(file_name, 'r') as f:
         d = yaml.load(f)
     if to_cfg is None:
         to_cfg = cfg
