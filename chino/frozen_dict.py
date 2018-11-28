@@ -16,14 +16,14 @@ class FrozenDict(Dict):
     def __missing__(self, name):
         """After freezing, raise error for missing fields."""
         if not self.__dict__[FrozenDict.FROZEN]:
-            return super().__missing__(name)
+            return super(FrozenDict, self).__missing__(name)
         else:
             raise AttributeError("Invalid key '{0}'".format(name))
 
     def __setitem__(self, name, value):
         """After freezing, disable setting values for invalid fields."""
         if not self.__dict__[FrozenDict.FROZEN]:
-            super().__setitem__(name, value)
+            super(FrozenDict, self).__setitem__(name, value)
         else:
             # Check whether name exists
             if name not in self:
@@ -33,7 +33,7 @@ class FrozenDict(Dict):
                 raise KeyError("Unable to reset FrozenDict at "
                                "key '{0}'".format(name))
             else:
-                super().__setitem__(name, value)
+                super(FrozenDict, self).__setitem__(name, value)
 
     def is_frozen(self):
         """Check whether the current dict is frozen."""
