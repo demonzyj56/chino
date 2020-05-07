@@ -11,10 +11,14 @@ setup(
     description="Utilities used for the author's research",
     license='MIT',
     packages=['chino'],
-    install_requires=['pyyaml', 'addict', 'opencv-python', 'six', 'numpy'],
+    install_requires=['pyyaml', 'addict', 'opencv-python', 'six', 'numpy', 'click'],
     classifiers=[
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
-    ]
+    ],
+    entry_points='''
+        [console_scripts]
+        chino=chino.cli:cli
+    '''
 )
