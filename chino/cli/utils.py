@@ -4,6 +4,8 @@ from datetime import datetime
 
 import click
 
+from chino.io.fileio import create_text_file
+
 
 @click.command(name='touch')
 @click.argument('filename')
@@ -18,59 +20,43 @@ import click
 def touch_cli(filename, author, email, desc, executable, force):
     """Create a text file with given information."""
     try:
-        touch(filename, author, email, desc, True, executable, force)
-    except FileExistsError as e:
-        click.echo(e)
+        touch(filename, author, email, desc, True, True, executable, force)
+    except Exception as e:
+        click.echo('Cannot create file `{0}`, reason: {1}'.format(filename, e))
 
 
 def touch(filename: str,
           author: str = None,
           email: str = None,
           desc: str = None,
+          record_create_datetime: bool = False,
           create_dir: bool = False,
           executable: bool = False,
           force: bool = False):
     """
     Create a text file with given information.
-
-    :param force: If True, then force creating the file regardless whether
-        it exists or not.
-    :param desc: Description for the text file.
-    :param executable: If True, the text file is regarded as an executable
-        script. In this case, a shebang is added.
-    :param create_dir: If True, then create the directory for filename.
-    :param email: Email information (default: yijie.zeng@outlook.com).
-    :param filename: Full path of the text file.
-    :param author: Author of the file (default: Yijie Zeng).
-    :return:
     """
-    if not force and os.path.exists(filename):
-        raise FileExistsError('{0} already exists.'.format(filename))
-    dirname = os.path.dirname(filename)
-    if create_dir and len(dirname) > 0 and not os.path.isdir(dirname):
-        os.makedirs(dirname)
-    if author is None:
-        author = 'Yijie Zeng'
-    if email is None:
-        email = 'yijie.zeng@outlook.com'
-    headers = [
-        '# Author: {0} ({1})'.format(author, email),
-        '# Date: {0}'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    ]
-    if desc is not None:
-        headers.append('# Description: {0}'.format(desc))
+    headers = []
     if executable:
         _, ext = os.path.splitext(os.path.basename(filename))
         # NOTE: I only use python and bash, so adding more interpreters
         # is not my consideration.
         if ext == '.py':  # a python file, use python3 always, also add utf-8
-            headers.insert(0, '#!/usr/bin/env python3')
-            headers.insert(1, '# -*- coding: utf-8 -*-')
+            headers.append('#!/usr/bin/env python3')
+            headers.append('# -*- coding: utf-8 -*-')
         elif ext == '.sh':
             # https://stackoverflow.com/a/10383546
-            headers.insert(0, '#!/usr/bin/env bash')
-    with open(filename, 'w', encoding='utf-8') as f:
-        for line in headers:
-            f.write(line + '\n')
+            headers.append('#!/usr/bin/env bash')
+    if author is not None:
+        author_info = '# Author: {0}'.format(author)
+        if email is not None:
+            author_info += ' ({0})'.format(email)
+        headers.append(author_info)
+    if record_create_datetime:
+        headers.append('# Date: {0}'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    if desc is not None:
+        headers.append('# Description: {0}'.format(desc))
+    create_text_file(filename, headers, create_dir, force)
     if executable:
-        os.chmod(filename, stat.S_IXUSR)
+        st = os.stat(filename)
+        os.chmod(filename, st.st_mode | stat.S_IXUSR)
