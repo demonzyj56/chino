@@ -24,15 +24,22 @@ def exp():
 
 @exp.command()
 @click.option('--name', '-n', type=str, default=None)
-@click.option('--author', '-a', default='Yijie Zeng', help='Author of the file.')
-@click.option('--email', '-e', default='yijie.zeng@outlook.com',
-              help='Email of the author.')
+@click.option('--author', '-a', default=None, help='Author of the file.')
+@click.option('--email', '-e', default=None, help='Email of the author.')
 def init(name: str, author: str, email: str) -> None:
     """Initialize the current folder as an experiment project folder."""
     if name is None:
         name = 'Awesome-{0}'.format(''.join([random.choice(ascii_lowercase+digits) for _ in range(8)]))
     else:
         name = name.replace(' ', '-')
+    try:
+        personal_info = json.load(open(os.path.join(os.path.expanduser('~'), '.chino', 'settings.json'), 'r'))
+    except FileNotFoundError:
+        personal_info = None
+    if author is None and personal_info is not None:
+        author = personal_info.get('name', None)
+    if email is None and personal_info is not None:
+        email = personal_info.get('email', None)
     root_folder = os.path.join(os.getcwd(), '.chino-exp')
     if os.path.isdir(root_folder):
         click.echo('Cannot initialize project with name {0}.'.format(name))
