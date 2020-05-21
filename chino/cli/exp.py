@@ -82,7 +82,7 @@ def list_cli():
         return
     exps = sorted(info['exps'], key=lambda item: item['name'])
     for e in exps:
-        click.echo('{0}: {1}'.format(e['name'], e['desc']))
+        click.echo('{0} ({1}): {2}'.format(e['name'], e['commit_id'], e['desc']))
 
 
 @exp.command()
@@ -118,7 +118,7 @@ def new(annotation: str, desc: str, entrypoint: str) -> None:
 
 
 @exp.command()
-@click.option('--name', '-n', type=str, prompt=True,
+@click.option('--name', '-n', type=str, default=None,
               help='Name of the experiment.')
 @click.option('--commit_id', '-c', type=str, default=None)
 def update(name: str, commit_id: str) -> None:
@@ -129,6 +129,8 @@ def update(name: str, commit_id: str) -> None:
     if info is None:
         click.echo('Experiment project folder not initialized or corrupted.')
         return
+    if name is None:
+        name = click.prompt('name')
     exp_name = None
     for e in info['exps']:
         if re.search(name, e['name']) is not None:
@@ -139,12 +141,12 @@ def update(name: str, commit_id: str) -> None:
         click.echo('Unable to find any experiment matching {0}. Exiting.'.format(name))
         return
     if commit_id is None:
-        commit_id = click.prompt('commit_id')
+        commit_id = click.prompt('commit_id for {}'.format(exp_name))
     old_id = exp_info.get('commit_id', None)
     exp_info['commit_id'] = commit_id
     with open(info['path'], 'w') as f:
         json.dump(info, f)
-    click.echo('Updated commit_id {} -> {}.'.format(old_id, commit_id))
+    click.echo('Updated commit_id {0} -> {1} for {2}.'.format(old_id, commit_id, exp_name))
 
 
 @exp.command()
